@@ -16,7 +16,8 @@ def read(f):
         for v in d[k]:
             print "\t" + v.decode("utf-8")
 
-files = sys.argv[1:3]
+# index strings in datasets
+datasets = sys.argv[1:3]
 Parallel(n_jobs = 2)(delayed
-    (read)(f) for f in files
+    (read)(f) for f in datasets
 )

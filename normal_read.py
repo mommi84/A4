@@ -4,9 +4,13 @@ from rdflib.plugins.parsers.ntriples import NTriplesParser, Sink
 from rdflib.term import URIRef
 from rdflib import Literal, XSD
 import time
+import re
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
+
+# r2 = re.compile(r"\[([^\[]*)\|[^\[]*\]")
+r2 = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 class MyReader():
     
@@ -19,6 +23,18 @@ class MyReader():
             self.d = d
         
         def insert(self, o, s):
+            # check that it's not a number
+            try:
+                float(o)
+                print "{} is a number. Skipping...".format(o)
+                return
+            except:
+                pass
+            # check that it's not a date
+            if r2.match(o):
+                print "{} is a date. Skipping...".format(o)
+                return
+            # index it
             if o not in self.d:
                 self.d[o] = list()
             self.d[o].append(s)
