@@ -11,6 +11,10 @@ def read(f):
     print "Started reading {}...".format(f)
     d = MyReader().start(f)
     print "Done."
+    for k in d:
+        print k.decode("utf-8")
+        for v in d[k]:
+            print "\t" + v.decode("utf-8")
 
 files = sys.argv[1:3]
 Parallel(n_jobs = 2)(delayed
