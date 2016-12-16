@@ -9,7 +9,6 @@ import re
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-# r2 = re.compile(r"\[([^\[]*)\|[^\[]*\]")
 r2 = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 class MyReader():
@@ -36,8 +35,8 @@ class MyReader():
                 return
             # index it
             if o not in self.d:
-                self.d[o] = list()
-            self.d[o].append(s)
+                self.d[o] = set()
+            self.d[o].add(s)
         
         def triple(self, s, p, o):
             if type(o) is Literal:
