@@ -18,13 +18,17 @@ class MyReader():
         def __init__(self, d):
             self.d = d
         
+        def insert(self, o, s):
+            if o not in self.d:
+                self.d[o] = list()
+            self.d[o].append(s)
+        
         def triple(self, s, p, o):
-            # global d
             if type(o) is Literal:
                 if o.datatype == None:
-                    self.d[unicode(o)] = unicode(s)
+                    self.insert(unicode(o), unicode(s))
                 elif o.datatype == XSD.string:
-                    self.d[unicode(o)] = unicode(s)
+                    self.insert(unicode(o), unicode(s))
     
     def start(self, filename):
         
