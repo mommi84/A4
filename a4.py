@@ -3,6 +3,7 @@ import sys
 from normal_read import MyReader
 import multiprocessing as mp
 from joblib import Parallel, delayed
+from cbd_getter import CBDGetter
 # import ppjoin
 
 reload(sys)
@@ -82,6 +83,13 @@ with open(g_truth) as f:
 print classes    
 
 # TODO create features
+# get CBDs
+g_src, g_tgt = CBDGetter(datasets[0]), CBDGetter(datasets[1])
+for ex in examples:
+    cbd_src = g_src.get(ex[0])
+    cbd_tgt = g_tgt.get(ex[1])
+    print cbd_src
+    print cbd_tgt
 
 # TODO classify
 
