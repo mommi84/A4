@@ -8,6 +8,8 @@ from joblib import Parallel, delayed
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
+datasets = sys.argv[1:3]
+g_truth = sys.argv[3]
 N_EXAMPLES = 10
 
 def read(f):
@@ -22,7 +24,6 @@ def read(f):
 
 # index strings in datasets
 print "Indexing strings in datasets..."
-datasets = sys.argv[1:3]
 labels = Parallel(n_jobs = 2)(delayed
     (read)(f) for f in datasets
 )
@@ -59,7 +60,7 @@ for k in indices:
     setT = labels[1][k]
     for s in setS:
         for t in setT:
-            examples.append([s, t])
+            examples.append((s, t))
 print "examples: {}".format(examples)
 
 # TODO (similar) similarity join
@@ -69,7 +70,18 @@ print "examples: {}".format(examples)
 # print ppjoin.candidate_pairs(x)
 # print x[1], x[2]
 
-# TODO (A) label examples
+# (A) label examples
+classes = dict()
+OWL_SAMEAS = "http://www.w3.org/2002/07/owl#sameAs"
+with open(g_truth) as f:
+    for line in f:
+        for ex in examples:
+            line2 = "<{}> <{}> <{}> .\n".format(ex[0], OWL_SAMEAS, ex[1])
+            if line == line2:
+               classes[ex] = 1
+print classes    
+
+# TODO create features
 
 # TODO classify
 
