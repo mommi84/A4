@@ -13,18 +13,25 @@ class CBDGetter():
     
     class StreamSink(Sink):
     
-        def __init__(self, filename, uri, cbd):
+        def __init__(self, filename, uris, cbd):
             self.filename = filename
-            self.uri = uri
+            self.uris = uris
             self.cbd = cbd
         
         def triple(self, s, p, o):
-            if unicode(s) == self.uri or unicode(o) == self.uri:
-                self.cbd.append((s,p,o))
+            if unicode(s) in self.uris:
+                self.cbd[unicode(s)].append((s,p,o))
+                return
+            if unicode(o) in self.uris:
+                self.cbd[unicode(o)].append((s,p,o))
 
-    def get(self, uri):
-        self.cbd = list()
-        src = self.StreamSink(self.filename, uri, self.cbd)
+    def get(self, arr, index):
+        uris = list()
+        self.cbd = dict()
+        for pair in arr:
+            uris.append(pair[index])
+            self.cbd[pair[index]] = list()
+        src = self.StreamSink(self.filename, uris, self.cbd)
         src_n = NTriplesParser(src)
         with open(self.filename, "r") as anons:
             src_n.parse(anons)
@@ -32,6 +39,8 @@ class CBDGetter():
 
 if __name__ == '__main__':
     g = CBDGetter(sys.argv[1])
-    cbd = g.get(sys.argv[2])
+    arr = list()
+    arr.append((sys.argv[2], "http://example.com/"))
+    cbd = g.get(arr, 0)
     print cbd
     

@@ -71,25 +71,46 @@ print "examples: {}".format(examples)
 # print ppjoin.candidate_pairs(x)
 # print x[1], x[2]
 
-# (A) label examples
-classes = dict()
-OWL_SAMEAS = "http://www.w3.org/2002/07/owl#sameAs"
-with open(g_truth) as f:
-    for line in f:
-        for ex in examples:
-            line2 = "<{}> <{}> <{}> .\n".format(ex[0], OWL_SAMEAS, ex[1])
-            if line == line2:
-               classes[ex] = 1
-print classes    
+def label_examples(examples):
+    pos_ex = dict()
+    OWL_SAMEAS = "http://www.w3.org/2002/07/owl#sameAs"
+    with open(g_truth) as f:
+        for line in f:
+            for ex in examples:
+                line2 = "<{}> <{}> <{}> .\n".format(ex[0], OWL_SAMEAS, ex[1])
+                if line == line2:
+                   pos_ex[ex] = 1
+    return pos_ex
+
+# (A) label examples until n/2 < p < n
+pos_ex = label_examples(examples)
+n_pos = len(pos_ex)
+n_neg = len(examples) - n_pos
+print "{} positive, {} negative examples found.".format(n_pos, n_neg)
+for i in range(len(examples)-1):
+    # generate negatives
+    gen = list()
+    gen.append((examples[i], examples[i+1]))
+    new_pos = label_examples(gen)
+    n_pos += len(new_pos)
+    n_neg += len(gen) - len(new_pos)
+    print "{} positive, {} negative examples found.".format(n_pos, n_neg)
+    # update lists
+    examples += gen
+    pos_ex.update(new_pos)
+    if 2 * n_neg > n_pos and 2 * n_pos > n_neg:
+        break
 
 # TODO create features
 # get CBDs
 g_src, g_tgt = CBDGetter(datasets[0]), CBDGetter(datasets[1])
-for ex in examples:
-    cbd_src = g_src.get(ex[0])
-    cbd_tgt = g_tgt.get(ex[1])
-    print cbd_src
-    print cbd_tgt
+cbd_src = g_src.get(examples, 0)
+cbd_tgt = g_tgt.get(examples, 1)
+print "CBD(src) = {}".format(cbd_src)
+print "CBD(tgt) = {}".format(cbd_tgt)
+# create features
+# for ex in examples:
+    
 
 # TODO classify
 
