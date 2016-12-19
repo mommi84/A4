@@ -7,6 +7,7 @@ from cbd_getter import CBDGetter
 from rdflib import Literal, XSD
 import similarities as sim
 import numpy as np
+import learning
 # import ppjoin
 
 reload(sys)
@@ -104,7 +105,6 @@ for i in range(len(examples)-1):
     if 2 * n_neg > n_pos and 2 * n_pos > n_neg:
         break
 
-# TODO create features
 # get CBDs
 g_src, g_tgt = CBDGetter(datasets[0]), CBDGetter(datasets[1])
 cbd_src = g_src.get(examples, 0)
@@ -112,6 +112,7 @@ cbd_tgt = g_tgt.get(examples, 1)
 print "CBD(src) = {}".format(cbd_src)
 print "CBD(tgt) = {}".format(cbd_tgt)
 feat = dict() # dict of feature vectors
+clas = dict() # dict of classes
 indices = dict() # indices for the respective pair (p1,p2)
 # calculate number of properties
 prop1 = set()
@@ -151,14 +152,20 @@ for ex in examples:
                     # print " --- added: {}".format(v[ind])
     feat[ex] = v
     if ex in pos_ex:
-        pass # positive example
-    
-for ex in feat:
-    print ex, feat[ex]
-    
-# TODO classify
+        clas[ex] = 1 # positive example
+    else:
+        clas[ex] = 0 # negative example
 
-# TODO parallelized evaluation (on sub-sample?)
+for ex in feat:
+    print ex, feat[ex], clas[ex]
+print feat.values()
+print clas.values()
+
+# classify
+svm = learning.learn(feat.values(), clas.values())
+print "Training accuracy: {}".format(learning.accuracy(svm, feat.values(), clas.values())) 
+
+# TODO (parallelized) evaluation
 
 # TODO if not termination criteria, choose next examples and goto (A)
 
