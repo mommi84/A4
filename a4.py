@@ -13,6 +13,7 @@ sys.setdefaultencoding("utf-8")
 datasets = sys.argv[1:3]
 g_truth = sys.argv[3]
 N_EXAMPLES = 10
+N_CORES = mp.cpu_count()
 
 def read(f):
     print "Started reading {}...".format(f)
@@ -118,10 +119,18 @@ for obj_src in labels[0]:
             for sbj_tgt in labels[0][obj_tgt]:
                 # get all subjects (which are in labels[0] and labels[1])
                 all_examples.add((sbj_src, sbj_tgt))
-print len(all_examples)
+print "Examples created: {}".format(len(all_examples))
+print "Building features for SxT..."
+all_feats, all_classes = fb.build(all_examples, pos_ex, datasets)
 # TODO filter out non-estimated (p1,p2) properties
-# all_feats, all_classes = fb.build(all_examples, pos_ex, datasets)
-# print "Test accuracy: {}".format(learning.accuracy(svm, all_feats, all_classes))
+print "Filtering out unknown property matches..."
+feats_keys = feats.keys()
+for f in all_feats:
+    if f not in feats_keys:
+        del all_feats[f]
+print "Evaluating SxT..."
+acc = learning.accuracy(svm, all_feats, all_classes)
+print "Test accuracy: {}".format(acc)
 
 
 # TODO if not termination criteria, choose next examples and goto (A)
