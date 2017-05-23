@@ -3,9 +3,6 @@ import sys
 from rdflib.plugins.parsers.ntriples import NTriplesParser, Sink
 from rdflib.term import URIRef
 
-reload(sys)
-sys.setdefaultencoding("utf-8")
-
 class CBDGetter():
     
     def __init__(self, filename):
@@ -38,6 +35,9 @@ class CBDGetter():
         return self.cbd
 
 if __name__ == '__main__':
+    reload(sys)
+    sys.setdefaultencoding("utf-8")
+    
     g = CBDGetter(sys.argv[1])
     arr = list()
     arr.append((sys.argv[2], "http://example.com/"))

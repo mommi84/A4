@@ -1,18 +1,30 @@
 #!/usr/bin/env python
+"""
+
+TODO semantic filtering (keep super-properties of known property matches)
+TODO add language-aware similarity measures (word2vec, wordnet)
+TODO add compatibility with any classifier
+
+"""
 import sys
 from normal_read import MyReader
 import multiprocessing as mp
 from joblib import Parallel, delayed
 import feature_build as fb
 import learning
+import time
 # import ppjoin
+import emailer
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
+OWL_SAMEAS = "http://www.w3.org/2002/07/owl#sameAs"
+
 datasets = sys.argv[1:3]
 g_truth = sys.argv[3]
-N_EXAMPLES = 10
+BATCH_MSIZE = int(sys.argv[4])
+N_EXAMPLES = int(sys.argv[5])
 N_CORES = mp.cpu_count()
 
 def read(f):
@@ -66,6 +78,8 @@ for k in indices:
             examples.append((s, t))
 print "examples: {}".format(examples)
 
+# import pdb; pdb.set_trace()
+
 # TODO (similar) similarity join
 # l = list(labels[0].keys()).extend(list(labels[1].keys()))
 # print l
@@ -75,7 +89,6 @@ print "examples: {}".format(examples)
 
 def label_examples(examples):
     pos_ex = dict()
-    OWL_SAMEAS = "http://www.w3.org/2002/07/owl#sameAs"
     with open(g_truth) as f:
         for line in f:
             for ex in examples:
@@ -104,34 +117,96 @@ for i in range(len(examples)-1):
         break
 
 # feature creation
-feats, classes = fb.build(examples, pos_ex, datasets)
+feats, classes, pr_indices = fb.build(examples, pos_ex, datasets)
+print "pr_indices ({}) = {}".format(len(pr_indices), pr_indices)
 
 # classify
-svm = learning.learn(feats, classes)
-print "Training accuracy: {}".format(learning.accuracy(svm, feats, classes)) 
+svm = learning.learn(pr_indices, feats, classes)
+print "Training F1-score: {}".format(learning.f_score(pr_indices, svm, feats, classes)) 
 
+# batch msize     rate   memory
+#         100     ~800      490
+#         500    ~1300      450
+#        1000    ~1300      610
+#        2000    ~1100      460
+#        5000    ~1000      350
+
+# on-the-fly evaluation
+srcuris = set()
+for v in labels[0].values()[:100]:
+    srcuris = srcuris.union(v)
+tgturis = set()
+for v in labels[1].values()[:100]:
+    tgturis = tgturis.union(v)
+print "SRC URIs={}, TGT URIs={}".format(len(srcuris), len(tgturis))
+
+def pair_gen(labels):
+    # get all subjects (which are in labels[0] and labels[1])
+    pairs = list()
+    for sbj_src in srcuris: 
+        for sbj_tgt in tgturis: 
+            pair = (sbj_src, sbj_tgt)
+            pairs.append(pair)
+            if len(pairs) == BATCH_MSIZE:
+                yield pairs
+                # empty list
+                del pairs[:]
+    # yield remainder
+    if len(pairs) > 0:
+        yield pairs
+
+space_size = 0
+for pairs in pair_gen(labels):
+    space_size += len(pairs)
+print "Expecting {} pairs.".format(space_size)
+
+def evaluation(onepair):
+    # print "len(pairs)=",len(onepair)
+    # onepair = list()
+    # onepair.append(pair)
+    # print "Testing pair: {}".format(pair)
+    # print "Building features..."
+    pair_feats, pair_classes, pair_indices = fb.build_test(pr_indices, onepair, pos_ex, datasets)
+
+    # print "Evaluating pair..."
+    tp, fp, tn, fn, fp_list, fn_list = learning.f_score(pr_indices, svm, pair_feats, pair_classes)
+    print "Test F1-score: {}".format((tp, fp, tn, fn))
+    for x in fp_list:
+        print "FP: {}".format(onepair[x])
+    for x in fn_list:
+        print "FN: {}".format(onepair[x])
+    return (tp, fp, tn, fn)
+
+start = time.time()
 # evaluation
-all_examples = set()
-# TODO parallelize?
-for obj_src in labels[0]:
-    for sbj_src in labels[0][obj_src]:
-        for obj_tgt in labels[0]:
-            for sbj_tgt in labels[0][obj_tgt]:
-                # get all subjects (which are in labels[0] and labels[1])
-                all_examples.add((sbj_src, sbj_tgt))
-print "Examples created: {}".format(len(all_examples))
-print "Building features for SxT..."
-all_feats, all_classes = fb.build(all_examples, pos_ex, datasets)
-# TODO filter out non-estimated (p1,p2) properties
-print "Filtering out unknown property matches..."
-feats_keys = feats.keys()
-for f in all_feats:
-    if f not in feats_keys:
-        del all_feats[f]
-print "Evaluating SxT..."
-acc = learning.accuracy(svm, all_feats, all_classes)
-print "Test accuracy: {}".format(acc)
+result = Parallel(n_jobs = N_CORES)(delayed
+    (evaluation)(pair) for pair in pair_gen(labels)
+)
+end = time.time()
+tot = 0
+for r in result:
+    tot += sum(r)
+print "Tot (dedupl.): {}".format(tot)
+rate = tot / (end-start)
+print "Start: {} - End: {}".format(start, end)
+print "Rate: {} ex/s".format(rate)
+print "result (tp, fp, tn, fn) = ", result
 
+tp = 0
+fp = 0
+tn = 0
+fn = 0
+for r in result:
+    tp += r[0]
+    fp += r[1]
+    tn += r[2]
+    fn += r[3]
+print "tp={}, fp={}, tn={}, fn={}".format(tp, fp, tn, fn)
+pre = tp / float(tp + fp) if tp + fp > 0 else 0.0
+rec = tp / float(tp + fn) if tp + fn > 0 else 0.0
+f1 = 2 * pre * rec / (pre + rec) if pre + rec > 0 else 0.0
+out = "f1={}, pre={}, rec={}".format(f1, pre, rec)
+print out
+# emailer.send("{}-{}: {}".format(datasets[0], datasets[1], out))
 
 # TODO if not termination criteria, choose next examples and goto (A)
-

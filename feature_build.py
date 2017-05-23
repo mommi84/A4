@@ -6,10 +6,14 @@ import numpy as np
 
 def build(examples, pos_ex, datasets):
     g_src, g_tgt = CBDGetter(datasets[0]), CBDGetter(datasets[1])
+    # print "Getting CBD for src..."
     cbd_src = g_src.get(examples, 0)
+    # print "Getting CBD for tgt..."
     cbd_tgt = g_tgt.get(examples, 1)
-    print "CBD(src) = {}".format(cbd_src)
-    print "CBD(tgt) = {}".format(cbd_tgt)
+    # print "CBD(src) size = {}".format(len(cbd_src))
+    # print "CBD(src) = {}".format(cbd_src)
+    # print "CBD(tgt) size = {}".format(len(cbd_tgt))
+    # print "CBD(tgt) = {}".format(cbd_tgt)
     feat = dict() # dict of feature vectors
     clas = dict() # dict of classes
     indices = dict() # indices for the respective pair (p1,p2)
@@ -25,6 +29,7 @@ def build(examples, pos_ex, datasets):
     n_p1, n_p2 = len(prop1), len(prop2)
     del prop1, prop2
     # create features
+    i = 0
     for ex in examples:
         v = np.zeros(n_p1 * n_p2)
         src, tgt = cbd_src[ex[0]], cbd_tgt[ex[1]]
@@ -43,7 +48,7 @@ def build(examples, pos_ex, datasets):
                     if o2.datatype == None or o2.datatype == XSD.string:
                         y = unicode(o2)
                         sim_xy = sim.compute(x,y)
-                        print p1, p2, x, y, sim_xy
+                        # print p1, p2, x, y, sim_xy
                         if (p1, p2) not in indices:
                             indices[(p1, p2)] = len(indices)
                         ind = indices[(p1, p2)]
@@ -54,10 +59,41 @@ def build(examples, pos_ex, datasets):
             clas[ex] = 1 # positive example
         else:
             clas[ex] = 0 # negative example
+        
 
-    for ex in feat:
-        print ex, feat[ex], clas[ex]
-    print feat.values()
-    print clas.values()
-    return feat.values(), clas.values()
+    # for ex in feat:
+    #     print ex, feat[ex], clas[ex]
+    # print feat.values()
+    # print clas.values()
+    return feat, clas, indices
     
+def build_test(pr_indices, examples, pos_ex, datasets):
+    
+    pair_feats, pair_classes, pair_indices = build(examples, pos_ex, datasets)
+    
+    out_feats = dict()
+    
+    # print "Filtering out unknown property matches..."    
+    for ex in pair_feats:
+        
+        # print "==== EXAMPLE:", ex
+        # print "Before:", len(pair_feats[ex])
+        # print "Before:", pair_feats[ex]
+        
+        v = np.zeros(len(pr_indices))
+        out_feats[ex] = v
+        
+        for prop in pr_indices:
+            ind = pr_indices[prop]
+            if prop in pair_indices:
+                # filter out non-estimated (p1,p2) properties
+                ind2 = pair_indices[prop]
+                v[ind] = pair_feats[ex][ind2]
+            else:
+                # assume 0.0 when missing
+                v[ind] = 0.0
+        
+        # print "After:", len(out_feats[ex])
+        # print "After:", out_feats[ex]
+    
+    return out_feats, pair_classes, pr_indices
